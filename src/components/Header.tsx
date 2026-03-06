@@ -4,11 +4,13 @@ import { Search, Bell, User, HelpCircle, Menu, X, LogOut, LogIn } from 'lucide-r
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import AuthAlertModal from './AuthAlertModal';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,7 +34,17 @@ export default function Header() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Searching for:', searchQuery);
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleProtectedAction = (path: string) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+    } else {
+      navigate(path);
+    }
   };
 
   return (
@@ -61,19 +73,28 @@ export default function Header() {
               <input
                 type="text"
                 placeholder="게임명 또는 서버명을 입력하세요"
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                className="w-full pl-4 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              <button 
+                type="submit"
+                className="absolute right-3 top-2.5 h-4 w-4 text-gray-400 hover:text-blue-600 transition-colors"
+                aria-label="검색"
+              >
+                <Search className="h-4 w-4" />
+              </button>
             </div>
           </form>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link to="/register" className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors">
+            <button 
+              onClick={() => handleProtectedAction('/register')}
+              className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors"
+            >
               판매등록
-            </Link>
+            </button>
             
             {user ? (
               <>
@@ -128,7 +149,15 @@ export default function Header() {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 py-4 px-4 space-y-4 shadow-lg">
-          <Link to="/register" className="block py-2 text-base font-medium text-gray-700">판매등록</Link>
+          <button 
+            onClick={() => {
+              setIsMenuOpen(false);
+              handleProtectedAction('/register');
+            }} 
+            className="block w-full text-left py-2 text-base font-medium text-gray-700"
+          >
+            판매등록
+          </button>
           {user ? (
             <>
               <Link to="/mypage" className="block py-2 text-base font-medium text-gray-700">마이페이지</Link>
@@ -140,6 +169,11 @@ export default function Header() {
           <Link to="/" className="block py-2 text-base font-medium text-gray-700">고객센터</Link>
         </div>
       )}
+
+      <AuthAlertModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
     </header>
   );
 }

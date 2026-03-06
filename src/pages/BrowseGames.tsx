@@ -30,7 +30,7 @@ export default function BrowseGames() {
         </div>
 
         {/* Game Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-4 gap-y-12 justify-items-center">
           {POPULAR_GAMES.map((game, idx) => (
             <motion.div
               key={game.id}

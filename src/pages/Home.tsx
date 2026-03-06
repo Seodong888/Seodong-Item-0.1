@@ -1,15 +1,90 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ShoppingCart, Tag, TrendingUp, ShieldAlert, ChevronRight, AlertCircle } from 'lucide-react';
+import { ShoppingCart, Tag, TrendingUp, ShieldAlert, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
 import Layout from '@/src/components/Layout';
 import GameIcon from '@/src/components/GameIcon';
 import ItemCard from '@/src/components/ItemCard';
-import { POPULAR_GAMES, MOCK_LISTINGS } from '@/src/mockData';
+import { POPULAR_GAMES } from '@/src/mockData';
 import { cn } from '@/src/lib/utils';
+import { supabase } from '@/src/lib/supabase';
+import { ItemListing } from '@/src/types';
+import AuthAlertModal from '@/src/components/AuthAlertModal';
 
 export default function Home() {
   const navigate = useNavigate();
+  const [listings, setListings] = useState<ItemListing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const fetchLatestListings = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('listings')
+          .select(`
+            *,
+            profiles (
+              name,
+              rating,
+              trades,
+              is_verified
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(8);
+
+        if (error) throw error;
+
+        if (data) {
+          const mappedData: ItemListing[] = data.map((item: any) => ({
+            id: item.id,
+            gameId: item.game_id,
+            server: item.server,
+            title: item.title,
+            price: item.price,
+            thumbnail: item.thumbnail,
+            safetyGrade: item.safety_grade,
+            sellerId: item.seller_id,
+            sellerName: item.profiles?.name || '익명',
+            sellerRating: item.profiles?.rating || 5.0,
+            sellerTrades: item.profiles?.trades || 0,
+            isVerified: item.profiles?.is_verified || false,
+            description: item.description,
+            level: item.level || 0,
+            class: item.class || '',
+            equipment: item.equipment || [],
+            skills: item.skills || [],
+            currency: item.currency || '원',
+            images: item.images || [],
+            createdAt: item.created_at,
+          }));
+          setListings(mappedData);
+        }
+      } catch (err) {
+        console.error('Error fetching latest listings:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLatestListings();
+  }, []);
+
+  const handleProtectedAction = (path: string) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+    } else {
+      navigate(path);
+    }
+  };
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -33,18 +108,18 @@ export default function Home() {
                 전자 계약 시스템으로 회수 걱정 없는 안전한 거래를 시작하세요.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link 
-                  to="/register" 
+                <button 
+                  onClick={() => handleProtectedAction('/register')}
                   className="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 transition-all"
                 >
                   지금 판매하기
-                </Link>
-                <Link
-                  to="/browse"
+                </button>
+                <button
+                  onClick={() => handleProtectedAction('/browse')}
                   className="px-8 py-4 bg-gray-900 text-white font-bold rounded-xl hover:bg-black hover:shadow-lg hover:-translate-y-0.5 transition-all"
                 >
                   매물 보러가기
-                </Link>
+                </button>
               </div>
             </motion.div>
 
@@ -59,14 +134,14 @@ export default function Home() {
                 title="구매하기" 
                 desc="안전한 매물 찾기" 
                 color="bg-orange-50 text-orange-600"
-                onClick={() => navigate('/browse')}
+                onClick={() => handleProtectedAction('/browse')}
               />
               <QuickMenuButton 
                 icon={<Tag className="w-6 h-6" />} 
                 title="판매하기" 
                 desc="빠른 현금화" 
                 color="bg-blue-50 text-blue-600"
-                onClick={() => navigate('/register')}
+                onClick={() => handleProtectedAction('/register')}
               />
               <QuickMenuButton 
                 icon={<TrendingUp className="w-6 h-6" />} 
@@ -89,11 +164,8 @@ export default function Home() {
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-bold text-gray-900">인기 게임 리스트</h2>
-          <button className="text-sm font-medium text-gray-400 hover:text-blue-600 flex items-center gap-1">
-            전체보기 <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-6 sm:gap-8">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-10 justify-items-center">
           {POPULAR_GAMES.map((game) => (
             <GameIcon key={game.id} game={game} />
           ))}
@@ -121,17 +193,35 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {MOCK_LISTINGS.map((item) => (
-              <ItemCard key={item.id} item={item} />
-            ))}
-            {/* Repeat some items for visual density */}
-            {MOCK_LISTINGS.map((item) => (
-              <ItemCard key={`dup-${item.id}`} item={item} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+              <p className="text-gray-500 font-medium">매물을 불러오는 중입니다...</p>
+            </div>
+          ) : listings.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {listings.map((item) => (
+                <ItemCard key={item.id} item={item} />
+              ))}
+            </div>
+          ) : (
+            <div className="py-20 text-center bg-white rounded-3xl border border-gray-100">
+              <p className="text-gray-500">등록된 매물이 없습니다. 첫 번째 매물을 등록해보세요!</p>
+              <button 
+                onClick={() => handleProtectedAction('/register')}
+                className="inline-block mt-4 text-blue-600 font-bold hover:underline"
+              >
+                판매 등록하러 가기
+              </button>
+            </div>
+          )}
         </div>
       </section>
+
+      <AuthAlertModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
 
       {/* Community / Notice */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

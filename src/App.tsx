@@ -8,6 +8,7 @@ import BrowseGames from './pages/BrowseGames';
 import GameListings from './pages/GameListings';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import SearchResults from './pages/SearchResults';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/listings/:gameId" element={<GameListings />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/search" element={<SearchResults />} />
       </Routes>
     </Router>
   );

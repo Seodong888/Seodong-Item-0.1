@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, 
@@ -11,25 +11,98 @@ import {
   FileText, 
   Star,
   CheckCircle2,
-  Maximize2
+  Maximize2,
+  Loader2
 } from 'lucide-react';
 import Layout from '@/src/components/Layout';
 import SafetyBadge from '@/src/components/SafetyBadge';
-import { MOCK_LISTINGS } from '@/src/mockData';
 import { cn } from '@/src/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { supabase } from '@/src/lib/supabase';
+import { ItemListing } from '@/src/types';
 
 export default function ItemDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const item = MOCK_LISTINGS.find(i => i.id === id) || MOCK_LISTINGS[0];
   
+  const [item, setItem] = useState<ItemListing | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [activeTab, setActiveTab] = useState<'detail' | 'seller' | 'contract'>('detail');
 
+  useEffect(() => {
+    const fetchItem = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('listings')
+          .select(`
+            *,
+            profiles (
+              name,
+              rating,
+              trades,
+              is_verified
+            )
+          `)
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setItem({
+            id: data.id,
+            gameId: data.game_id,
+            server: data.server,
+            title: data.title,
+            price: data.price,
+            thumbnail: data.thumbnail,
+            safetyGrade: data.safety_grade,
+            sellerId: data.seller_id,
+            sellerName: data.profiles?.name || '익명',
+            sellerRating: data.profiles?.rating || 5.0,
+            sellerTrades: data.profiles?.trades || 0,
+            isVerified: data.profiles?.is_verified || false,
+            description: data.description,
+            level: data.level || 0,
+            class: data.class || '',
+            equipment: data.equipment || [],
+            skills: data.skills || [],
+            currency: data.currency || '원',
+            images: data.images || [],
+            createdAt: data.created_at,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching item:', err);
+        navigate('/');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchItem();
+  }, [id, navigate]);
+
   const handlePurchase = () => {
-    navigate(`/transaction/${item.id}`);
+    if (item) {
+      navigate(`/transaction/${item.id}`);
+    }
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+          <p className="text-gray-500 font-medium">매물 정보를 불러오는 중입니다...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!item) return null;
 
   return (
     <Layout>
@@ -54,7 +127,7 @@ export default function ItemDetail() {
                 <AnimatePresence mode="wait">
                   <motion.img
                     key={activeImage}
-                    src={item.images[activeImage]}
+                    src={item.images[activeImage] || item.thumbnail}
                     alt={`Screen ${activeImage + 1}`}
                     className="w-full h-full object-contain"
                     initial={{ opacity: 0 }}
@@ -65,39 +138,45 @@ export default function ItemDetail() {
                   />
                 </AnimatePresence>
                 
-                <button 
-                  onClick={() => setActiveImage(prev => (prev === 0 ? item.images.length - 1 : prev - 1))}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button 
-                  onClick={() => setActiveImage(prev => (prev === item.images.length - 1 ? 0 : prev + 1))}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
+                {item.images.length > 1 && (
+                  <>
+                    <button 
+                      onClick={() => setActiveImage(prev => (prev === 0 ? item.images.length - 1 : prev - 1))}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button 
+                      onClick={() => setActiveImage(prev => (prev === item.images.length - 1 ? 0 : prev + 1))}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                  </>
+                )}
                 
                 <div className="absolute bottom-4 right-4 bg-black/50 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm flex items-center gap-2">
                   <Maximize2 className="w-3 h-3" />
-                  {activeImage + 1} / {item.images.length}
+                  {activeImage + 1} / {item.images.length || 1}
                 </div>
               </div>
               
-              <div className="p-4 flex gap-2 overflow-x-auto">
-                {item.images.map((img, idx) => (
-                  <button 
-                    key={idx}
-                    onClick={() => setActiveImage(idx)}
-                    className={cn(
-                      "w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
-                      activeImage === idx ? "border-blue-600" : "border-transparent opacity-60 hover:opacity-100"
-                    )}
-                  >
-                    <img src={img} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  </button>
-                ))}
-              </div>
+              {item.images.length > 0 && (
+                <div className="p-4 flex gap-2 overflow-x-auto">
+                  {item.images.map((img, idx) => (
+                    <button 
+                      key={idx}
+                      onClick={() => setActiveImage(idx)}
+                      className={cn(
+                        "w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
+                        activeImage === idx ? "border-blue-600" : "border-transparent opacity-60 hover:opacity-100"
+                      )}
+                    >
+                      <img src={img} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Tabs */}

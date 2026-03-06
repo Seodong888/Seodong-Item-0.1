@@ -1,17 +1,75 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Filter, ChevronDown, Search, ArrowLeft } from 'lucide-react';
+import { Filter, ChevronDown, Search, ArrowLeft, Loader2 } from 'lucide-react';
 import Layout from '@/src/components/Layout';
 import ItemCard from '@/src/components/ItemCard';
-import { MOCK_LISTINGS, POPULAR_GAMES } from '@/src/mockData';
+import { POPULAR_GAMES } from '@/src/mockData';
+import { supabase } from '@/src/lib/supabase';
+import { ItemListing } from '@/src/types';
 
 export default function GameListings() {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const game = POPULAR_GAMES.find(g => g.id === gameId);
   
-  const filteredListings = MOCK_LISTINGS.filter(item => item.gameId === gameId);
+  const [listings, setListings] = useState<ItemListing[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('listings')
+          .select(`
+            *,
+            profiles (
+              name,
+              rating,
+              trades,
+              is_verified
+            )
+          `)
+          .eq('game_id', gameId)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          const mappedData: ItemListing[] = data.map((item: any) => ({
+            id: item.id,
+            gameId: item.game_id,
+            server: item.server,
+            title: item.title,
+            price: item.price,
+            thumbnail: item.thumbnail,
+            safetyGrade: item.safety_grade,
+            sellerId: item.seller_id,
+            sellerName: item.profiles?.name || '익명',
+            sellerRating: item.profiles?.rating || 5.0,
+            sellerTrades: item.profiles?.trades || 0,
+            isVerified: item.profiles?.is_verified || false,
+            description: item.description,
+            level: item.level || 0,
+            class: item.class || '',
+            equipment: item.equipment || [],
+            skills: item.skills || [],
+            currency: item.currency || '원',
+            images: item.images || [],
+            createdAt: item.created_at,
+          }));
+          setListings(mappedData);
+        }
+      } catch (err) {
+        console.error('Error fetching listings:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, [gameId]);
 
   return (
     <Layout>
@@ -31,7 +89,9 @@ export default function GameListings() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{game?.name || '게임'} 매물</h1>
-                <p className="text-sm text-gray-500">현재 {filteredListings.length}개의 안전 매물이 등록되어 있습니다.</p>
+                <p className="text-sm text-gray-500">
+                  {loading ? '불러오는 중...' : `현재 ${listings.length}개의 안전 매물이 등록되어 있습니다.`}
+                </p>
               </div>
             </div>
             
@@ -62,25 +122,19 @@ export default function GameListings() {
         </div>
 
         {/* Listings Grid */}
-        {filteredListings.length > 0 ? (
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+            <p className="text-gray-500 font-medium">매물을 불러오는 중입니다...</p>
+          </div>
+        ) : listings.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredListings.map((item, idx) => (
+            {listings.map((item, idx) => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
-              >
-                <ItemCard item={item} />
-              </motion.div>
-            ))}
-            {/* Mock more items if needed */}
-            {filteredListings.map((item, idx) => (
-              <motion.div
-                key={`dup-${item.id}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: (idx + filteredListings.length) * 0.1 }}
               >
                 <ItemCard item={item} />
               </motion.div>
@@ -92,7 +146,13 @@ export default function GameListings() {
               <Search className="w-10 h-10 text-gray-300" />
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-2">등록된 매물이 없습니다.</h3>
-            <p className="text-gray-500">다른 게임을 선택하시거나 나중에 다시 확인해주세요.</p>
+            <p className="text-gray-500">가장 먼저 첫 번째 매물을 등록해보세요!</p>
+            <button 
+              onClick={() => navigate('/register')}
+              className="mt-6 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+            >
+              판매 등록하기
+            </button>
           </div>
         )}
       </div>

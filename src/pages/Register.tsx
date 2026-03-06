@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
@@ -10,15 +10,21 @@ import {
   Layers,
   FileText,
   ShieldCheck,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import Layout from '@/src/components/Layout';
 import { POPULAR_GAMES } from '@/src/mockData';
 import { cn } from '@/src/lib/utils';
+import { supabase } from '@/src/lib/supabase';
+import SuccessModal from '@/src/components/SuccessModal';
 
 export default function Register() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     game: '',
     server: '',
@@ -31,10 +37,21 @@ export default function Register() {
 
   const [images, setImages] = useState<string[]>([]);
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('판매 등록을 위해 로그인이 필요합니다.');
+        navigate('/login');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      // In a real app, upload to server. Here we just use placeholders.
+      // In a real app, upload to Supabase Storage. Here we just use placeholders.
       const newImages = Array.from(files).map((_, i) => `https://picsum.photos/seed/upload-${Date.now()}-${i}/800/600`);
       setImages([...images, ...newImages]);
     }
@@ -44,9 +61,75 @@ export default function Register() {
     setImages(images.filter((_, i) => i !== idx));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('판매 등록이 완료되었습니다!');
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('로그인이 필요합니다.');
+      }
+
+      // Ensure profile exists (in case trigger didn't run for existing users)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        throw profileError;
+      }
+
+      if (!profile) {
+        const { error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '익명 사용자',
+            rating: 5.0,
+            trades: 0,
+            mileage: 0,
+            is_verified: false
+          });
+        
+        if (createProfileError) throw createProfileError;
+      }
+
+      const { error: insertError } = await supabase
+        .from('listings')
+        .insert({
+          game_id: formData.game,
+          server: formData.server,
+          title: formData.title,
+          price: parseInt(formData.price),
+          description: formData.description,
+          thumbnail: images[0] || 'https://picsum.photos/seed/default/400/300',
+          images: images,
+          safety_grade: formData.guarantee ? 'S' : 'A',
+          seller_id: session.user.id,
+          class: formData.category,
+          currency: '원',
+          level: 0, // Default for now
+          equipment: [],
+          skills: [],
+        });
+
+      if (insertError) throw insertError;
+
+      setIsSuccessModalOpen(true);
+    } catch (err: any) {
+      setError(err.message || '등록 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSuccessClose = () => {
+    setIsSuccessModalOpen(false);
     navigate('/');
   };
 
@@ -57,6 +140,13 @@ export default function Register() {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">판매 등록</h1>
           <p className="text-gray-500">빠르고 안전하게 당신의 소중한 아이템을 판매하세요.</p>
         </div>
+
+        {error && (
+          <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm font-medium">{error}</p>
+          </div>
+        )}
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center mb-12">
@@ -247,13 +337,19 @@ export default function Register() {
             </button>
             <button 
               type="submit"
-              className="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all"
+              disabled={loading}
+              className="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              매물 등록하기
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : '매물 등록하기'}
             </button>
           </div>
         </form>
       </div>
+      <SuccessModal 
+        isOpen={isSuccessModalOpen} 
+        onClose={handleSuccessClose} 
+        message="매물이 등록 되었습니다." 
+      />
     </Layout>
   );
 }
