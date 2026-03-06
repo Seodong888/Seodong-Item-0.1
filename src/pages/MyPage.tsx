@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Wallet, 
   ShoppingBag, 
@@ -13,14 +13,76 @@ import {
   Download,
   ShieldCheck,
   User as UserIcon,
-  Bell
+  Bell,
+  Loader2
 } from 'lucide-react';
 import Layout from '@/src/components/Layout';
 import { cn } from '@/src/lib/utils';
 import { motion } from 'motion/react';
+import { supabase } from '@/src/lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 export default function MyPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'contracts' | 'chats'>('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
+  const [ongoingSales, setOngoingSales] = useState(0);
+  const [ongoingPurchases, setOngoingPurchases] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        navigate('/login');
+        return;
+      }
+
+      try {
+        // Fetch profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profileError) throw profileError;
+        setProfile(profileData);
+
+        // Fetch ongoing sales (listings by user)
+        const { count: salesCount, error: salesError } = await supabase
+          .from('listings')
+          .select('*', { count: 'exact', head: true })
+          .eq('seller_id', session.user.id);
+        
+        if (salesError) throw salesError;
+        setOngoingSales(salesCount || 0);
+
+        // Since we don't have a transactions table yet, we'll keep purchases as 0 or mock it
+        setOngoingPurchases(0);
+
+      } catch (err) {
+        console.error('Error fetching mypage data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+          <p className="text-gray-500 font-medium">내 정보를 불러오는 중입니다...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -34,8 +96,8 @@ export default function MyPage() {
                   <UserIcon className="w-8 h-8 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">홍길동님</h2>
-                  <p className="text-xs text-gray-400">아이템팜 3년차 우수회원</p>
+                  <h2 className="text-lg font-bold text-gray-900">{profile?.name || '회원'}님</h2>
+                  <p className="text-xs text-gray-400">SD의아이템 우수회원</p>
                 </div>
               </div>
               
@@ -63,7 +125,7 @@ export default function MyPage() {
                   onClick={() => setActiveTab('chats')}
                   icon={<MessageCircle className="w-4 h-4" />} 
                   label="채팅 목록" 
-                  badge={3}
+                  badge={0}
                 />
                 <SidebarItem 
                   active={false} 
@@ -108,21 +170,21 @@ export default function MyPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <StatCard 
                       title="보유 마일리지" 
-                      value="1,245,000" 
+                      value={profile?.mileage?.toLocaleString() || '0'} 
                       unit="원" 
                       icon={<Wallet className="w-5 h-5 text-blue-600" />}
                       action="출금 신청"
                     />
                     <StatCard 
                       title="진행 중인 구매" 
-                      value="2" 
+                      value={ongoingPurchases.toString()} 
                       unit="건" 
                       icon={<ShoppingBag className="w-5 h-5 text-orange-600" />}
                       action="내역 보기"
                     />
                     <StatCard 
                       title="진행 중인 판매" 
-                      value="1" 
+                      value={ongoingSales.toString()} 
                       unit="건" 
                       icon={<Tag className="w-5 h-5 text-emerald-600" />}
                       action="내역 보기"
@@ -136,27 +198,9 @@ export default function MyPage() {
                       <button className="text-xs text-blue-600 font-bold">전체보기</button>
                     </div>
                     <div className="divide-y divide-gray-100">
-                      <ActivityItem 
-                        type="buy" 
-                        title="리니지M 데포로쥬01 계정" 
-                        status="결제 완료" 
-                        date="2024.03.05 14:20" 
-                        amount="4,500,000" 
-                      />
-                      <ActivityItem 
-                        type="sell" 
-                        title="오딘 발할라 라이징 다이아 1만" 
-                        status="인수 대기" 
-                        date="2024.03.05 12:45" 
-                        amount="120,000" 
-                      />
-                      <ActivityItem 
-                        type="buy" 
-                        title="나이트 워커 블레이드 고스펙" 
-                        status="거래 완료" 
-                        date="2024.03.04 18:10" 
-                        amount="850,000" 
-                      />
+                      <div className="p-12 text-center">
+                        <p className="text-sm text-gray-400">최근 거래 내역이 없습니다.</p>
+                      </div>
                     </div>
                   </div>
 
@@ -176,7 +220,7 @@ export default function MyPage() {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">출금 가능 금액</label>
-                          <p className="text-2xl font-black text-gray-900">1,245,000원</p>
+                          <p className="text-2xl font-black text-gray-900">{profile?.mileage?.toLocaleString() || '0'}원</p>
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">출금 신청 금액</label>
@@ -191,13 +235,13 @@ export default function MyPage() {
                         <label className="block text-xs font-bold text-gray-400 mb-4 uppercase tracking-wider">등록된 계좌 정보</label>
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-white rounded-lg border border-gray-200 flex items-center justify-center font-bold text-[10px]">신한</div>
+                            <div className="w-8 h-8 bg-white rounded-lg border border-gray-200 flex items-center justify-center font-bold text-[10px]">은행</div>
                             <div>
-                              <p className="text-sm font-bold text-gray-900">신한은행</p>
-                              <p className="text-xs text-gray-500">110-***-123456</p>
+                              <p className="text-sm font-bold text-gray-900">미등록</p>
+                              <p className="text-xs text-gray-500">계좌를 등록해주세요</p>
                             </div>
                           </div>
-                          <button className="text-xs text-blue-600 font-bold">변경</button>
+                          <button className="text-xs text-blue-600 font-bold">등록</button>
                         </div>
                         <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md">
                           출금 신청하기

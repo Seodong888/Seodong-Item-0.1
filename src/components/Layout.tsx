@@ -49,7 +49,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-gray-400">
-              © 2024 아이템팜. All rights reserved. (주)아이템팜 | 대표이사: 홍길동 | 사업자등록번호: 123-45-67890
+              © 2026 SD의아이템. All rights reserved. SD의아이템 | 대표이사: 홍길동 | 사업자등록번호: 123-45-67890
             </p>
             <div className="flex gap-6">
               <a href="#" className="text-xs text-gray-400 hover:text-gray-600">이용약관</a>

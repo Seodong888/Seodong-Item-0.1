@@ -107,7 +107,7 @@ export default function Register() {
           title: formData.title,
           price: parseInt(formData.price),
           description: formData.description,
-          thumbnail: images[0] || 'https://picsum.photos/seed/default/400/300',
+          thumbnail: images[0] || 'https://picsum.photos/seed/game-character/400/300',
           images: images,
           safety_grade: formData.guarantee ? 'S' : 'A',
           seller_id: session.user.id,

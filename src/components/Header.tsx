@@ -5,12 +5,16 @@ import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import AuthAlertModal from './AuthAlertModal';
+import PolicyModal from './PolicyModal';
+import PreparationModal from './PreparationModal';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -173,6 +177,16 @@ export default function Header() {
       <AuthAlertModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
+      />
+
+      <PolicyModal 
+        isOpen={isPolicyModalOpen} 
+        onClose={() => setIsPolicyModalOpen(false)} 
+      />
+
+      <PreparationModal 
+        isOpen={isPrepModalOpen} 
+        onClose={() => setIsPrepModalOpen(false)} 
       />
     </header>
   );
