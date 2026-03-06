@@ -22,7 +22,7 @@ const REVIEWS = [
   {
     name: "이*민",
     rating: 5,
-    text: "SD의아이템 덕분에 오랫동안 찾던 매물 안전하게 구했습니다. 에스크로 시스템이 확실해서 좋네요."
+    text: "SD의Item 덕분에 오랫동안 찾던 매물 안전하게 구했습니다. 에스크로 시스템이 확실해서 좋네요."
   },
   {
     name: "박*서",
@@ -160,7 +160,7 @@ export default function Home() {
                     className="text-2xl sm:text-4xl font-extrabold text-gray-900 leading-tight pr-2"
                   >
                     {SLOGANS[currentSloganIdx].main}<br />
-                    <span className="text-blue-600">{SLOGANS[currentSloganIdx].sub}</span> SD의아이템
+                    <span className="text-blue-600">{SLOGANS[currentSloganIdx].sub}</span> SD의Item
                   </motion.h1>
                 </AnimatePresence>
               </div>
@@ -342,7 +342,7 @@ export default function Home() {
                 <span className="text-xs opacity-60">03.04</span>
               </li>
               <li className="flex items-center justify-between text-sm text-red-700">
-                <span className="truncate">SD의아이템 사칭 문자 메시지 주의</span>
+                <span className="truncate">SD의Item 사칭 문자 메시지 주의</span>
                 <span className="text-xs opacity-60">03.02</span>
               </li>
             </ul>

@@ -64,7 +64,7 @@ export default function Header() {
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-black tracking-tight text-gray-900 leading-none">
-                SD의아이템
+                SD의Item
               </span>
               <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">
                 Safe & Direct

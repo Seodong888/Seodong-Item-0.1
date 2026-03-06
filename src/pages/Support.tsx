@@ -17,7 +17,7 @@ export default function Support() {
 
         <div className="bg-white rounded-3xl border border-gray-100 p-8 sm:p-12 shadow-sm">
           <div className="text-center mb-12">
-            <h1 className="text-3xl font-black text-gray-900 mb-2">SD의아이템</h1>
+            <h1 className="text-3xl font-black text-gray-900 mb-2">SD의Item</h1>
             <p className="text-gray-500">고객님의 안전한 거래를 위해 최선을 다하겠습니다.</p>
           </div>
 

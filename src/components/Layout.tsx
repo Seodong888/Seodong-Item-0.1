@@ -21,11 +21,11 @@ export default function Layout({ children }: LayoutProps) {
                   <span className="text-white font-black text-sm italic">SD</span>
                 </div>
                 <span className="text-lg font-bold tracking-tight text-gray-900">
-                  SD의아이템
+                  SD의Item
                 </span>
               </div>
               <p className="text-sm text-gray-500 max-w-sm">
-                대한민국 1등 계정 거래 안전 지대. SD의아이템은 전자 계약 시스템과 200% 보상 제도를 통해 가장 안전한 거래 환경을 제공합니다.
+                대한민국 1등 계정 거래 안전 지대. SD의Item은 전자 계약 시스템과 200% 보상 제도를 통해 가장 안전한 거래 환경을 제공합니다.
               </p>
             </div>
             <div>
@@ -49,7 +49,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-gray-400">
-              © 2026 SD의아이템. All rights reserved. SD의아이템 | 대표이사: 홍길동 | 사업자등록번호: 123-45-67890
+              © 2026 SD의Item. All rights reserved. SD의Item | 대표이사: 홍길동 | 사업자등록번호: 123-45-67890
             </p>
             <div className="flex gap-6">
               <a href="#" className="text-xs text-gray-400 hover:text-gray-600">이용약관</a>
