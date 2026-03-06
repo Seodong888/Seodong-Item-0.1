@@ -29,6 +29,7 @@ export default function MyPage() {
   const [profile, setProfile] = useState<any>(null);
   const [ongoingSales, setOngoingSales] = useState(0);
   const [ongoingPurchases, setOngoingPurchases] = useState(0);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,13 +56,24 @@ export default function MyPage() {
         const { count: salesCount, error: salesError } = await supabase
           .from('listings')
           .select('*', { count: 'exact', head: true })
-          .eq('seller_id', session.user.id);
+          .eq('seller_id', session.user.id)
+          .neq('status', 'sold');
         
         if (salesError) throw salesError;
         setOngoingSales(salesCount || 0);
 
-        // Since we don't have a transactions table yet, we'll keep purchases as 0 or mock it
-        setOngoingPurchases(0);
+        // Fetch ongoing purchases (listings where user is buyer)
+        const { data: purchasesData, count: purchasesCount, error: purchasesError } = await supabase
+          .from('listings')
+          .select('*', { count: 'exact' })
+          .eq('buyer_id', session.user.id);
+        
+        if (purchasesError) {
+          console.warn('buyer_id column might not exist yet:', purchasesError);
+        } else {
+          setOngoingPurchases(purchasesCount || 0);
+          setRecentTransactions(purchasesData || []);
+        }
 
       } catch (err) {
         console.error('Error fetching mypage data:', err);
@@ -198,9 +210,23 @@ export default function MyPage() {
                       <button className="text-xs text-blue-600 font-bold">전체보기</button>
                     </div>
                     <div className="divide-y divide-gray-100">
-                      <div className="p-12 text-center">
-                        <p className="text-sm text-gray-400">최근 거래 내역이 없습니다.</p>
-                      </div>
+                      {recentTransactions.length > 0 ? (
+                        recentTransactions.map((tx) => (
+                          <div key={tx.id}>
+                            <ActivityItem 
+                              type="buy" 
+                              title={tx.title} 
+                              status="거래 완료" 
+                              date={new Date(tx.created_at).toLocaleDateString()} 
+                              amount={tx.price.toLocaleString()} 
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-12 text-center">
+                          <p className="text-sm text-gray-400">최근 거래 내역이 없습니다.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 

@@ -40,11 +40,25 @@ export default function Home() {
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [currentReviewIdx, setCurrentReviewIdx] = useState(0);
+  const [currentSloganIdx, setCurrentSloganIdx] = useState(0);
+
+  const SLOGANS = [
+    { main: "대한민국 1등 계정거래", sub: "압도적 안전지대" },
+    { main: "회수 걱정 제로", sub: "100% 전자계약" },
+    { main: "사고 발생 시", sub: "200% 책임보상" }
+  ];
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentReviewIdx((prev) => (prev + 1) % REVIEWS.length);
     }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSloganIdx((prev) => (prev + 1) % SLOGANS.length);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -129,10 +143,21 @@ export default function Home() {
               <span className="inline-block px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full mb-4 uppercase tracking-wider">
                 Safety First Platform
               </span>
-              <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-6">
-                대한민국 1등 계정 거래<br />
-                <span className="text-blue-600">안전 지대</span> SD의아이템
-              </h1>
+              <div className="h-[100px] sm:h-[120px] mb-2 overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.h1 
+                    key={currentSloganIdx}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-2xl sm:text-4xl font-extrabold text-gray-900 leading-tight pr-2"
+                  >
+                    {SLOGANS[currentSloganIdx].main}<br />
+                    <span className="text-blue-600">{SLOGANS[currentSloganIdx].sub}</span> SD의아이템
+                  </motion.h1>
+                </AnimatePresence>
+              </div>
               <p className="text-lg text-gray-500 mb-8 max-w-lg">
                 누적 거래량 <span className="font-bold text-gray-900">1,240,000건</span> 돌파! 
                 전자 계약 시스템으로 회수 걱정 없는 안전한 거래를 시작하세요.
@@ -287,7 +312,7 @@ export default function Home() {
                 <span className="text-xs opacity-60">03.04</span>
               </li>
               <li className="flex items-center justify-between text-sm text-red-700">
-                <span className="truncate">아이템팜 사칭 문자 메시지 주의</span>
+                <span className="truncate">SD의아이템 사칭 문자 메시지 주의</span>
                 <span className="text-xs opacity-60">03.02</span>
               </li>
             </ul>

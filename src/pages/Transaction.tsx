@@ -10,21 +10,150 @@ import {
   Lock,
   ArrowRight,
   Download,
-  AlertCircle
+  AlertCircle,
+  Wallet,
+  Loader2
 } from 'lucide-react';
 import Layout from '@/src/components/Layout';
 import { MOCK_LISTINGS } from '@/src/mockData';
 import { cn } from '@/src/lib/utils';
 import { motion } from 'motion/react';
+import { supabase } from '@/src/lib/supabase';
+import { useEffect } from 'react';
+import { ItemListing } from '@/src/types';
 
 export default function Transaction() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const item = MOCK_LISTINGS.find(i => i.id === id) || MOCK_LISTINGS[0];
-  
+  const [item, setItem] = useState<ItemListing | null>(null);
+  const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState<'bank' | 'mileage' | 'card'>('bank');
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      setLoading(true);
+      try {
+        // Fetch listing and seller profile
+        const { data: listingData, error: listingError } = await supabase
+          .from('listings')
+          .select(`
+            *,
+            profiles (
+              name
+            )
+          `)
+          .eq('id', id)
+          .single();
+
+        if (listingError || !listingData) {
+          console.warn('Listing not found in DB, falling back to mock data:', listingError);
+          const mockItem = MOCK_LISTINGS.find(i => i.id === id) || MOCK_LISTINGS[0];
+          setItem({
+            ...mockItem,
+            sellerPhone: '010-1234-5678',
+            sellerEmail: 'seller@example.com'
+          } as any);
+        } else {
+          setItem({
+            id: listingData.id,
+            gameId: listingData.game_id || '',
+            server: listingData.server || '',
+            title: listingData.title || '',
+            price: listingData.price || 0,
+            thumbnail: listingData.thumbnail || '',
+            safetyGrade: listingData.safety_grade || 'B',
+            sellerId: listingData.seller_id || '',
+            sellerName: listingData.profiles?.name || '익명',
+            sellerPhone: (listingData as any).seller_phone || '010-****-****',
+            sellerEmail: (listingData as any).seller_email || 'info@itemfarm.com',
+            description: listingData.description || '',
+            level: listingData.level || 0,
+            class: listingData.class || '',
+            currency: listingData.currency || '원',
+            images: listingData.images || [],
+            createdAt: listingData.created_at,
+          } as any);
+        }
+
+        // Fetch current user profile for mileage
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          setProfile(profileData);
+        }
+      } catch (err) {
+        console.error('Error fetching transaction data:', err);
+        // Final fallback to ensure item is never null if id exists
+        const mockItem = MOCK_LISTINGS.find(i => i.id === id) || MOCK_LISTINGS[0];
+        setItem({
+          ...mockItem,
+          sellerPhone: '010-1234-5678',
+          sellerEmail: 'seller@example.com'
+        } as any);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
 
   const nextStep = () => setStep(prev => prev + 1);
+
+  const handleComplete = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && item) {
+        // Update listing with buyer_id and status
+        const { error } = await supabase
+          .from('listings')
+          .update({ 
+            buyer_id: session.user.id,
+            status: 'sold' 
+          } as any)
+          .eq('id', item.id);
+        
+        if (error) {
+          console.warn('Could not update listing status (buyer_id column might not exist), proceeding anyway:', error);
+        }
+      }
+      nextStep();
+    } catch (err) {
+      console.error('Error completing transaction:', err);
+      nextStep(); // Proceed anyway for UX
+    }
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+          <p className="text-gray-500 font-medium">거래 정보를 불러오는 중입니다...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!item && !loading) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+          <AlertCircle className="w-10 h-10 text-red-600" />
+          <p className="text-gray-500 font-medium">매물 정보를 찾을 수 없습니다.</p>
+          <button onClick={() => navigate('/')} className="text-blue-600 font-bold hover:underline">홈으로 이동</button>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!item) return null;
 
   return (
     <Layout>
@@ -32,7 +161,7 @@ export default function Transaction() {
         {/* Progress Header */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">안전 거래 진행</h1>
+            <h1 className="text-2xl font-bold text-gray-900">구매 처리 시스템</h1>
             <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
               거래 번호: <span className="text-gray-900">#TRX-20240305-001</span>
             </div>
@@ -69,9 +198,27 @@ export default function Transaction() {
                   </div>
                   
                   <div className="space-y-3">
-                    <PaymentOption icon={<CreditCard className="w-5 h-5" />} title="계좌이체" desc="수수료 0원 / 즉시 확인" active />
-                    <PaymentOption icon={<CreditCard className="w-5 h-5" />} title="마일리지" desc="보유: 1,200,000원" />
-                    <PaymentOption icon={<CreditCard className="w-5 h-5" />} title="신용카드" desc="카드사별 무이자 할부" />
+                    <PaymentOption 
+                      icon={<CreditCard className="w-5 h-5" />} 
+                      title="무통장입금" 
+                      desc="수수료 0원 / 즉시 확인" 
+                      active={paymentMethod === 'bank'} 
+                      onClick={() => setPaymentMethod('bank')}
+                    />
+                    <PaymentOption 
+                      icon={<Wallet className="w-5 h-5" />} 
+                      title="마일리지" 
+                      desc={`보유: ${profile?.mileage?.toLocaleString() || '0'}원`} 
+                      active={paymentMethod === 'mileage'} 
+                      onClick={() => setPaymentMethod('mileage')}
+                    />
+                    <PaymentOption 
+                      icon={<CreditCard className="w-5 h-5" />} 
+                      title="신용카드" 
+                      desc="카드사별 무이자 할부" 
+                      active={paymentMethod === 'card'} 
+                      onClick={() => setPaymentMethod('card')}
+                    />
                   </div>
 
                   <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
@@ -131,16 +278,16 @@ export default function Transaction() {
 
                   <div className="bg-gray-900 rounded-2xl p-8 text-white space-y-6">
                     <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                      <span className="text-sm text-gray-400">아이디</span>
-                      <span className="font-mono font-bold text-lg">itemfarm_user_01</span>
+                      <span className="text-sm text-gray-400">판매자 계정</span>
+                      <span className="font-mono font-bold text-lg">{(item as any).sellerEmail || '정보 없음'}</span>
                     </div>
                     <div className="flex items-center justify-between border-b border-white/10 pb-4">
                       <span className="text-sm text-gray-400">비밀번호</span>
                       <span className="font-mono font-bold text-lg">********</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">보안 코드</span>
-                      <span className="font-mono font-bold text-lg">4582</span>
+                      <span className="text-sm text-gray-400">연락처</span>
+                      <span className="font-mono font-bold text-lg">{(item as any).sellerPhone || '010-****-****'}</span>
                     </div>
                   </div>
 
@@ -148,15 +295,15 @@ export default function Transaction() {
                     <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />
                     <p className="text-xs text-orange-800 leading-relaxed">
                       정보를 확인하신 후 즉시 비밀번호 및 보안 설정을 변경해 주세요. 
-                      모든 변경이 완료된 후에만 '인수 확정'을 눌러주시기 바랍니다.
+                      모든 변경이 완료된 후에만 '계약 및 결제하기'를 눌러주시기 바랍니다.
                     </p>
                   </div>
 
                   <button 
-                    onClick={nextStep}
+                    onClick={handleComplete}
                     className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg transition-all"
                   >
-                    정보 확인 및 변경 완료
+                    계약 및 결제하기
                   </button>
                 </div>
               )}
@@ -177,10 +324,10 @@ export default function Transaction() {
                       계약서 PDF 다운로드
                     </button>
                     <button 
-                      onClick={() => navigate('/')}
+                      onClick={() => navigate('/mypage')}
                       className="py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg transition-all"
                     >
-                      홈으로 이동
+                      마이페이지로 이동
                     </button>
                   </div>
                 </div>
@@ -193,9 +340,9 @@ export default function Transaction() {
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm sticky top-24">
               <h3 className="text-sm font-bold text-gray-900 mb-4">거래 매물 정보</h3>
               <div className="flex gap-4 mb-6">
-                <img src={item.thumbnail} className="w-20 h-20 rounded-lg object-cover" referrerPolicy="no-referrer" />
+                <img src={item.thumbnail || ''} className="w-20 h-20 rounded-lg object-cover" referrerPolicy="no-referrer" />
                 <div>
-                  <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">{item.gameId.replace('-', ' ')}</p>
+                  <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">{(item.gameId || '').replace('-', ' ')}</p>
                   <h4 className="text-sm font-bold text-gray-900 line-clamp-2">{item.title}</h4>
                 </div>
               </div>
@@ -203,7 +350,7 @@ export default function Transaction() {
               <div className="space-y-3 pt-6 border-t border-gray-100">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500">상품 금액</span>
-                  <span className="font-bold text-gray-900">{item.price.toLocaleString()}원</span>
+                  <span className="font-bold text-gray-900">{(item.price || 0).toLocaleString()}원</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500">수수료</span>
@@ -211,7 +358,7 @@ export default function Transaction() {
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                   <span className="font-bold text-gray-900">최종 결제 금액</span>
-                  <span className="text-xl font-black text-blue-600">{item.price.toLocaleString()}원</span>
+                  <span className="text-xl font-black text-blue-600">{(item.price || 0).toLocaleString()}원</span>
                 </div>
               </div>
             </div>
@@ -242,12 +389,15 @@ function TransactionStep({ num, active, current, label, icon }: { num: number, a
   );
 }
 
-function PaymentOption({ icon, title, desc, active = false }: { icon: React.ReactNode, title: string, desc: string, active?: boolean }) {
+function PaymentOption({ icon, title, desc, active = false, onClick }: { icon: React.ReactNode, title: string, desc: string, active?: boolean, onClick?: () => void }) {
   return (
-    <div className={cn(
-      "p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-4",
-      active ? "bg-blue-50 border-blue-600" : "bg-white border-gray-100 hover:border-blue-200"
-    )}>
+    <div 
+      onClick={onClick}
+      className={cn(
+        "p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-4",
+        active ? "bg-blue-50 border-blue-600" : "bg-white border-gray-100 hover:border-blue-200"
+      )}
+    >
       <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", active ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400")}>
         {icon}
       </div>
