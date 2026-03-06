@@ -353,10 +353,15 @@ export default function ItemDetail() {
                     <CreditCard className="w-5 h-5" />
                     구매 신청하기
                   </button>
-                  <button className="w-full py-4 bg-white text-gray-700 font-bold rounded-xl border border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                  <a 
+                    href="https://open.kakao.com/o/s2nIq3ji"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 bg-white text-gray-700 font-bold rounded-xl border border-gray-200 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                  >
                     <MessageCircle className="w-5 h-5 text-blue-600" />
                     1:1 채팅 문의
-                  </button>
+                  </a>
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">

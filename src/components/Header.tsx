@@ -10,6 +10,7 @@ import PreparationModal from './PreparationModal';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -137,7 +138,10 @@ export default function Header() {
 
           {/* Mobile Menu Toggle */}
           <div className="md:hidden flex items-center gap-4">
-            <button className="p-2 text-gray-400">
+            <button 
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className={cn("p-2 transition-colors", isSearchOpen ? "text-blue-600" : "text-gray-400")}
+            >
               <Search className="h-5 w-5" />
             </button>
             <button 
@@ -149,6 +153,33 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Search Bar */}
+      {isSearchOpen && (
+        <div className="md:hidden bg-white border-t border-gray-100 p-4">
+          <form onSubmit={(e) => {
+            handleSearch(e);
+            setIsSearchOpen(false);
+          }}>
+            <div className="relative">
+              <input
+                type="text"
+                autoFocus
+                placeholder="게임명 또는 서버명을 입력하세요"
+                className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button 
+                type="submit"
+                className="absolute right-3 top-3.5 h-4 w-4 text-gray-400 hover:text-blue-600 transition-colors"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Mobile Menu */}
       {isMenuOpen && (
@@ -164,13 +195,16 @@ export default function Header() {
           </button>
           {user ? (
             <>
-              <Link to="/mypage" className="block py-2 text-base font-medium text-gray-700">마이페이지</Link>
-              <button onClick={handleLogout} className="block w-full text-left py-2 text-base font-medium text-red-600">로그아웃</button>
+              <Link to="/mypage" onClick={() => setIsMenuOpen(false)} className="block py-2 text-base font-medium text-gray-700">마이페이지</Link>
+              <button onClick={() => {
+                setIsMenuOpen(false);
+                handleLogout();
+              }} className="block w-full text-left py-2 text-base font-medium text-red-600">로그아웃</button>
             </>
           ) : (
-            <Link to="/login" className="block py-2 text-base font-medium text-blue-600">로그인 / 회원가입</Link>
+            <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block py-2 text-base font-medium text-blue-600">로그인 / 회원가입</Link>
           )}
-          <Link to="/" className="block py-2 text-base font-medium text-gray-700">고객센터</Link>
+          <Link to="/support" onClick={() => setIsMenuOpen(false)} className="block py-2 text-base font-medium text-gray-700">고객센터</Link>
         </div>
       )}
 

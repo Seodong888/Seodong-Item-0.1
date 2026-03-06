@@ -35,6 +35,7 @@ export default function Home() {
   const navigate = useNavigate();
   const [listings, setListings] = useState<ItemListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'전체' | '계정' | '아이템'>('전체');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
@@ -120,6 +121,11 @@ export default function Home() {
 
     fetchLatestListings();
   }, []);
+
+  const filteredListings = listings.filter(item => {
+    if (filter === '전체') return true;
+    return item.class === filter;
+  });
 
   const handleProtectedAction = (path: string) => {
     if (!user) {
@@ -218,11 +224,11 @@ export default function Home() {
       </section>
 
       {/* Popular Games */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
+      <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-900">인기 게임 리스트</h2>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-10 justify-items-center">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-6 justify-items-center">
           {POPULAR_GAMES.map((game) => (
             <GameIcon 
               key={game.id} 
@@ -234,21 +240,45 @@ export default function Home() {
       </section>
 
       {/* Real-time Listings */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-10 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">실시간 등록 매물</h2>
               <p className="text-sm text-gray-500 mt-1">방금 올라온 따끈따끈한 안전 매물입니다.</p>
             </div>
             <div className="flex gap-2">
-              <button className="flex-1 sm:flex-none px-4 py-3 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-lg text-sm font-bold sm:font-medium text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm">
+              <button 
+                onClick={() => setFilter('전체')}
+                className={cn(
+                  "flex-1 sm:flex-none px-4 py-3 sm:py-2 border rounded-xl sm:rounded-lg text-sm font-bold sm:font-medium transition-all shadow-sm",
+                  filter === '전체' 
+                    ? "bg-blue-600 border-blue-600 text-white" 
+                    : "bg-white border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600"
+                )}
+              >
                 전체
               </button>
-              <button className="flex-1 sm:flex-none px-4 py-3 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-lg text-sm font-bold sm:font-medium text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm">
+              <button 
+                onClick={() => setFilter('계정')}
+                className={cn(
+                  "flex-1 sm:flex-none px-4 py-3 sm:py-2 border rounded-xl sm:rounded-lg text-sm font-bold sm:font-medium transition-all shadow-sm",
+                  filter === '계정' 
+                    ? "bg-blue-600 border-blue-600 text-white" 
+                    : "bg-white border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600"
+                )}
+              >
                 계정
               </button>
-              <button className="flex-1 sm:flex-none px-4 py-3 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-lg text-sm font-bold sm:font-medium text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm">
+              <button 
+                onClick={() => setFilter('아이템')}
+                className={cn(
+                  "flex-1 sm:flex-none px-4 py-3 sm:py-2 border rounded-xl sm:rounded-lg text-sm font-bold sm:font-medium transition-all shadow-sm",
+                  filter === '아이템' 
+                    ? "bg-blue-600 border-blue-600 text-white" 
+                    : "bg-white border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600"
+                )}
+              >
                 아이템
               </button>
             </div>
@@ -259,9 +289,9 @@ export default function Home() {
               <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
               <p className="text-gray-500 font-medium">매물을 불러오는 중입니다...</p>
             </div>
-          ) : listings.length > 0 ? (
+          ) : filteredListings.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {listings.map((item) => (
+              {filteredListings.map((item) => (
                 <ItemCard key={item.id} item={item} />
               ))}
             </div>
@@ -295,8 +325,8 @@ export default function Home() {
       />
 
       {/* Community / Notice */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-red-50 rounded-2xl p-6 border border-red-100">
             <div className="flex items-center gap-2 mb-4">
               <AlertCircle className="w-5 h-5 text-red-600" />
